@@ -23,7 +23,8 @@
 #129.4, 129.4, 129.4
 # go to 142, 142, 50 -ish
 # go to 90, 90, 180 - ish
-POINTS=[(90,90,188.8),#
+POINTS=[(129.4, 129.4, 129.4),
+	(90,90,188.8),#
         (186.8,90,90),#
         (90,188.3,90),#
         (50, 145.6, 145.5),#
@@ -36,7 +37,18 @@ SIZE=250.0
 
 #APPROXIMATE Z DISTANCE FROM SHOULDER ARM ATTACHMENT
 #TO HUB ARM ATTACHMENT
-BED_Z=70
+#BED_Z=70
+#
+# >>> 100.2 - (25.1/2.0)
+#87.65
+#>>> 10.95 + 28.15
+#39.099999999999994
+#>>> 87.65 - 39.1
+#48.550000000000004
+# Drop by 3.8 to account for height difference between jhead and ubis?
+#BED_Z=12.7+70-3.8
+# Fails between 76 and 77.
+BED_Z = 78.9
 
 #APPROXIMATE MAX ACTUATED LENGTH OF ARM
 MAX_ARM_LENGTH=300
@@ -44,7 +56,7 @@ MAX_ARM_LENGTH=300
 #HOW SMALL SHOULD THE LINE SEGMENTS BE BROKEN DOWN TO?
 #SMALL=BETTER QUALITY
 #LARGE=SMALLER FILE/FASTER
-SEGMENT_SIZE=1.0
+SEGMENT_SIZE=0.75
 
 
 from scipy.optimize import leastsq
@@ -75,6 +87,7 @@ def getxyz(r1,r2,r3):
     j=SIZE*math.sqrt(3)/2.0
     x=(r1*r1-r2*r2+d*d)/(2*d)
     y=(r1*r1-r3*r3-x*x+(x-i)**2+j*j)/(2*j)
+    #print "about to compute: %i(r1), %i(x), %i(y)" % (r1, x, y)
     z=math.sqrt(r1*r1-x*x-y*y)
     return x,y,z
 
@@ -99,6 +112,7 @@ def equations(p):
 #GET OPTIMAL VALUES
 SHOULDER_Z1,SHOULDER_Z2,SHOULDER_Z3,MAX_LENGTH_1,MAX_LENGTH_2,MAX_LENGTH_3=leastsq(equations, DEFAULT_VALUES)[0]
 
+print "key vals: %s" % (", ".join(("%i" % i for i in [SHOULDER_Z1,SHOULDER_Z2,SHOULDER_Z3,MAX_LENGTH_1,MAX_LENGTH_2,MAX_LENGTH_3])))
 
 
 x1=-SIZE/2.0
@@ -204,7 +218,7 @@ for line in f:
     for c in coord:
         if c in stuff:
             coord[c]=stuff[c]
-f2.write("G92 X0 Y0 Z0 E0\nG1 X-1000 Y-1000 Z-1000\nG28\n")
+f2.write("G92 X0 Y0 Z0 E0\nG28\n")  #
 for line in program:
     abcline=getABC(line)
     for letter in prefixes:
@@ -214,6 +228,13 @@ for line in program:
             f2.write(letter+str(round(abcline[letter],3))+" ")
     f2.write("\n")
 
+#;M104 S0 ; turn off temperature
+#;G28 ; home X axis
+#;M84 ; disable motors
+f2.write("M104 S0\n")  # turn off temp
+f2.write("G0 X30 Y30 Z30 F2000\n")
+f2.write("G28\n")  # home axes
+f2.write("M84\n")  # shut off motors
 
 f2.close()
 print "done"
